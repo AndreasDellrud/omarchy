@@ -1,7 +1,14 @@
 # Configure pacman after package installation completes. Offline target package
 # installs use the live ISO's offline pacman.conf until this final restore.
-cp -f "$OMARCHY_PATH/default/pacman/pacman-${OMARCHY_MIRROR:-stable}.conf" /etc/pacman.conf
-cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-${OMARCHY_MIRROR:-stable}" /etc/pacman.d/mirrorlist
+if [[ $(uname -m) == aarch64 ]]; then
+  # Arch Linux ARM mirrors; pkgs.omarchy.org publishes no aarch64 repo yet, so
+  # the installed system keeps only the distribution repos until it does.
+  cp -f "$OMARCHY_PATH/default/pacman/pacman-aarch64.conf" /etc/pacman.conf
+  cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-aarch64" /etc/pacman.d/mirrorlist
+else
+  cp -f "$OMARCHY_PATH/default/pacman/pacman-${OMARCHY_MIRROR:-stable}.conf" /etc/pacman.conf
+  cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-${OMARCHY_MIRROR:-stable}" /etc/pacman.d/mirrorlist
+fi
 
 # Wait for CUPS to own the file, the way omarchy-settings does, so pacman does
 # not turn the override into a .pacnew during ISO package installation.
