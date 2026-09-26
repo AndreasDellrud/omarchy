@@ -33,8 +33,12 @@ fi
 sudo cp -f /etc/pacman.conf /etc/pacman.conf.bak
 sudo cp -f /etc/pacman.d/mirrorlist /etc/pacman.d/mirrorlist.bak
 echo "Setting channel to $channel"
-sudo cp -f "$OMARCHY_PATH/default/pacman/pacman-$channel.conf" /etc/pacman.conf
-sudo cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-$channel" /etc/pacman.d/mirrorlist
+# The channel configs name Arch Linux x86_64 mirrors. aarch64 has one config:
+# Arch Linux ARM plus Omarchy's edge aarch64 repository.
+pacman_config=$channel
+[[ $(uname -m) == aarch64 ]] && pacman_config=aarch64
+sudo cp -f "$OMARCHY_PATH/default/pacman/pacman-$pacman_config.conf" /etc/pacman.conf
+sudo cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-$pacman_config" /etc/pacman.d/mirrorlist
 
 # Allow user customization of /etc/pacman.conf before the upgrade runs, so
 # custom repositories and IgnorePkg entries shape the downgrade-capable

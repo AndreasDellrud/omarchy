@@ -1,8 +1,8 @@
 # Configure pacman after package installation completes. Offline target package
 # installs use the live ISO's offline pacman.conf until this final restore.
 if [[ $(uname -m) == aarch64 ]]; then
-  # Arch Linux ARM mirrors; pkgs.omarchy.org publishes no aarch64 repo yet, so
-  # the installed system keeps only the distribution repos until it does.
+  # Arch Linux ARM mirrors plus Omarchy's aarch64 packages, which are
+  # published on the edge channel only.
   cp -f "$OMARCHY_PATH/default/pacman/pacman-aarch64.conf" /etc/pacman.conf
   cp -f "$OMARCHY_PATH/default/pacman/mirrorlist-aarch64" /etc/pacman.d/mirrorlist
 else
