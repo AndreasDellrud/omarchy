@@ -1,0 +1,14 @@
+# omarchy-settings ships the same files on every architecture when its source
+# has this file: the recipe stops leaving the x86_64 memory stack (swap on
+# zram, zswap off, the reclaim sysctls, systemd-oomd's slice policy, USB
+# autosuspend) and the Thunderbolt module out of the aarch64 package.
+#
+# The N1x branch runs only on the NVIDIA N1x laptops, which need that stack as
+# much as x86_64 does: without it they boot with no swap at all while
+# systemd-oomd watches a pressure policy nobody configured. The HOOKS line in
+# etc/mkinitcpio.conf.d/omarchy_hooks.conf carries its own Apple Silicon guard,
+# as the recipe requires of a source that ships it unwrapped.
+#
+# omacom/omarchy#13362 brings this file upstream, with the runtime checks Apple
+# Silicon needs for each of these files; take its version when this branch
+# moves onto it.
