@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# omarchy:summary=Ensure the Omarchy and Arch keyring packages are installed and populated
+# omarchy:summary=Ensure the Omarchy, Arch and (on aarch64) Arch Linux ARM keyring packages are installed and populated
 # omarchy:requires-sudo=true
 
 # omarchy-update runs this under set -e as a trusted pre-step, so a failed recv
@@ -18,6 +18,37 @@ if omarchy-pkg-missing omarchy-keyring || ! sudo pacman-key --list-keys 40DFB630
   omarchy-pkg-add omarchy-keyring
 
   sudo pacman-key --list-keys 40DFB630FF42BCFFB047046CF0134EE680CAC571
+fi
+
+# Arch Linux ARM signs every package in its repositories, archlinux-keyring
+# included, with its own build key, and only archlinuxarm-keyring carries it,
+# so on aarch64 that keyring comes first. pacman's "Import PGP key?" prompt
+# adds the key without trusting it, so check that it is valid, not just present.
+alarm_key=68B3537F39A313B3E574D06777193F152BDBE6A6
+
+alarm_key_trusted() {
+  [[ $(sudo gpg --homedir /etc/pacman.d/gnupg --no-permission-warning --batch --with-colons --list-keys "$alarm_key" 2>/dev/null) =~ (^|$'\n')pub:[fu]: ]]
+}
+
+if [[ $(uname -m) == "aarch64" ]]; then
+  if ! alarm_key_trusted; then
+    if omarchy-pkg-present archlinuxarm-keyring; then
+      sudo pacman-key --populate archlinuxarm
+    else
+      sudo pacman-key --recv-keys "$alarm_key" --keyserver keyserver.ubuntu.com
+      sudo pacman-key --lsign-key "$alarm_key"
+    fi
+  fi
+
+  # Reinstall for the same reason as archlinux-keyring below; its install
+  # script populates the keys.
+  echo -e "\e[32m\nUpdate Arch Linux ARM signing keys\e[0m"
+  sudo pacman -Sy --noconfirm archlinuxarm-keyring >/dev/null 2> >(grep -vE '^warning: archlinuxarm-keyring-[^ ]+ is up to date -- reinstalling$' >&2)
+
+  if ! alarm_key_trusted; then
+    echo "Arch Linux ARM's signing key $alarm_key is still not trusted" >&2
+    exit 1
+  fi
 fi
 
 # Ensure we have the latest archlinux-keyring, maintainer keys might have changed
