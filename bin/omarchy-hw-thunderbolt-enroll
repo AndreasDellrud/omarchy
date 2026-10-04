@@ -1,0 +1,60 @@
+#!/bin/bash
+
+# omarchy:summary=Approve a Thunderbolt or USB4 device plugged in while the session is unlocked
+# omarchy:args=<device>
+# omarchy:hidden=true
+
+# With the "user" security level the kernel brings a new Thunderbolt or USB4
+# device up without its PCIe tunnels until something authorizes it, so a dock's
+# USB 2 and displays work while its Ethernet and anything else on PCIe stay
+# dark. boltd authorizes the devices it has stored; desktops ask before storing
+# a new one. Omarchy stores a device plugged in while the owner's local session
+# is active and unlocked, and leaves one plugged in at the lock screen alone
+# until it is plugged in again after unlocking.
+#
+# Started per device by omarchy-thunderbolt-enroll@.service, which
+# 70-omarchy-thunderbolt-enroll.rules asks every user manager for.
+
+set -euo pipefail
+
+thunderbolt_devices_path="${OMARCHY_THUNDERBOLT_DEVICES_PATH:-/sys/bus/thunderbolt/devices}"
+device="$thunderbolt_devices_path/${1:?usage: omarchy-hw-thunderbolt-enroll <device>}"
+
+[[ -r $device/unique_id && -r $device/authorized ]] || exit 0
+uuid=$(<"$device/unique_id")
+name="$(cat "$device/vendor_name" 2>/dev/null || true) $(cat "$device/device_name" 2>/dev/null || true)"
+name=${name# }
+
+# Only the owner of the active local session, and only while it is unlocked.
+# omarchy-hyprland-session-locked exits 1 for unlocked; an undetermined answer
+# approves nothing.
+session=${XDG_SESSION_ID:-}
+if [[ -z $session ]] ||
+  [[ $(loginctl show-session "$session" -p Active --value 2>/dev/null) != "yes" ]] ||
+  [[ $(loginctl show-session "$session" -p Remote --value 2>/dev/null) != "no" ]]; then
+  exit 0
+fi
+
+locked=0
+omarchy-hyprland-session-locked || locked=$?
+if (( locked != 1 )); then
+  echo "Not approving $name ($uuid) while the session is locked; plug it in again after unlocking"
+  exit 0
+fi
+
+# boltd sees the device from the same uevent. Leave anything it already stores
+# to it: it authorizes those itself, and a device stored with the manual policy
+# stays the owner's call.
+info=""
+for _ in {1..20}; do
+  info=$(boltctl info "$uuid" 2>/dev/null) && break
+  sleep 0.25
+done
+if [[ -z $info || ! $info =~ stored:[[:space:]]+no($|$'\n') ]]; then
+  exit 0
+fi
+[[ $(<"$device/authorized") == "0" ]] || exit 0
+
+boltctl enroll --policy auto "$uuid" >/dev/null
+echo "Approved $name ($uuid)"
+omarchy-notification-send -g "󱐋" "Approved $name" "It connects automatically from now on. Forget it with: boltctl forget $uuid"

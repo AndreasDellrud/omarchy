@@ -1,0 +1,6 @@
+# A Thunderbolt or USB4 device the kernel holds back (security level "user")
+# comes up without its PCIe tunnels: a dock's Ethernet stays dark while its USB
+# 2 and displays work. Ask every user manager to approve it;
+# omarchy-hw-thunderbolt-enroll only does so for the owner of the active,
+# unlocked local session, and leaves devices boltd already stores to boltd.
+ACTION=="add", SUBSYSTEM=="thunderbolt", ENV{DEVTYPE}=="thunderbolt_device", ATTR{authorized}=="0", TAG+="systemd", ENV{SYSTEMD_USER_WANTS}+="omarchy-thunderbolt-enroll@%k.service"

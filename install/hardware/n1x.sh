@@ -53,8 +53,9 @@ CONF
 # which power_wrap would otherwise release once xHCI is up; the SSPM cannot
 # power them again after that. The tunnel root ports are left unconfigured by
 # the firmware, so reserve bus numbers and windows for docks behind them. A
-# dock or adapter is approved once with `boltctl enroll --policy auto`. Only
-# validated on the ASUS ProArt P14 so far.
+# dock or adapter plugged in while the session is unlocked is approved once
+# (70-omarchy-thunderbolt-enroll.rules). Only validated on the ASUS ProArt P14
+# so far.
 if omarchy-hw-match "H7407BA"; then
   cat > /etc/limine-entry-tool.d/00-omarchy-n1x-usb4.conf <<'CONF'
 # N1x: keep the USB4 host routers powered and leave room for docks behind them;

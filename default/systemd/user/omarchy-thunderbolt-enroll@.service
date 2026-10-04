@@ -1,0 +1,7 @@
+[Unit]
+Description=Approve Thunderbolt device %i if plugged in while unlocked
+Documentation=man:boltctl(1)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/omarchy-hw-thunderbolt-enroll %i
