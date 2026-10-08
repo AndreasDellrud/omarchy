@@ -130,11 +130,12 @@ slot_of() {
 
 op=$1
 shift
-key_file="" token_type="" positional=()
+key_file="" token_type="" key_slot="" positional=()
 while (( $# )); do
   case $1 in
     --key-file) key_file=$2; shift 2 ;;
     --token-type) token_type=$2; shift 2 ;;
+    --key-slot) key_slot=$2; shift 2 ;;
     --pbkdf | --iter-time) shift 2 ;;
     -*) shift ;;
     *) positional+=("$1"); shift ;;
@@ -163,6 +164,11 @@ if [[ $op == "open" && -z $token_type && -n ${TEST_TOKEN_SLOT:-} ]]; then
 fi
 target=""
 [[ $op == "luksKillSlot" ]] && target=${positional[1]}
+if [[ $op == "open" && -n $key_slot ]]; then
+  grep -qxF "$key_slot"$'\t'"$key" "$slots" || { echo "No key available with this passphrase."; exit 2; }
+  echo "Key slot $key_slot unlocked."
+  exit 0
+fi
 slot=$(slot_of "$key" "$target")
 [[ -n $slot ]] || { echo "No key available with this passphrase."; exit 2; }
 
@@ -662,6 +668,53 @@ said "The new password is the current one."
 ! grep -q 'luksChangeKey\|chpasswd' "$tmp/sudo-calls" && [[ ! -e $journal ]] ||
   fail "refused passwords change nothing"
 pass "drive password rejects empty, mismatched and unchanged passphrases before changing anything"
+
+# A change interrupted part way is finished from the one slot the password
+# opened, so a system disk whose password is in two slots is refused before
+# anything changes: the other copy would outlive the change.
+use fake x86
+fixture "$old_password"
+if attempt 0 "$old_password" "$new_password" "$new_password"; then fail "a password in two slots is refused"; fi
+said "That password also opens key slot 1 on $system"
+said "The system disk password did not change."
+! grep -q 'luksChangeKey' "$tmp/sudo-calls" && [[ ! -e $journal ]] || fail "a password in two slots changes nothing"
+[[ $(opens "$system" "$old_password") == "0" ]] && grep -qxF $'1\t'"$old_password" "$system.slots" || fail "both copies are left as they were"
+pass "a system disk whose password opens two key slots is refused before anything changes"
+
+# A change journaled by an earlier version did not check the old password for
+# other slots. With other slots on the disk a copy of it may have outlived the
+# change, and no password entered now can show whose slot is whose, so it is
+# left for the owner to settle by hand, in every phase. With one slot it settles.
+for legacy_phase in luks record accounts; do
+  fixture ""
+  printf '0\t%s\n2\t%s\n' "$new_password" "$old_password" >"$system.slots"
+  mkdir -p "${journal%/*}"
+  printf 'uuid=uuid-system\nold_slot=0\nslots=0,2\nslot=0\nphase=%s\n' "$legacy_phase" >"$journal"
+  if attempt 0 "$new_password" "$old_password"; then fail "an earlier version's $legacy_phase change on a disk with other slots is not settled"; fi
+  said "may still hold a copy of the old password"
+  said "Settle it by hand"
+  ! grep -q 'luksKillSlot\|luksChangeKey' "$tmp/sudo-calls" && [[ -e $journal && -n $(opens "$system" "$old_password") ]] ||
+    fail "an earlier version's $legacy_phase change is left as it was" "$(cat "$tmp/sudo-calls")"
+done
+fixture ""
+printf '0\t%s\n' "$new_password" >"$system.slots"
+mkdir -p "${journal%/*}"
+printf 'uuid=uuid-system\nold_slot=0\nslots=0\nphase=luks\n' >"$journal"
+attempt 0 "$new_password" || fail "an earlier version's change on a one-slot disk settles" "$(cat "$tmp/output")"
+[[ ! -e $journal && $(opens "$system" "$new_password") == "0" ]] || fail "the one-slot change is settled"
+pass "an earlier version's interrupted change is left to the owner when other slots remain, and settles on a one-slot disk"
+
+# The new key's slot is how the change is followed, so a new password that
+# already opens a slot (another key on the disk) is refused.
+fixture
+if attempt 0 "$old_password" "$recovery_key" "$recovery_key"; then fail "a new password that opens a slot already is refused"; fi
+said "That password already opens a key slot on $system. Choose another."
+! grep -q 'luksChangeKey' "$tmp/sudo-calls" && [[ ! -e $journal ]] || fail "an enrolled new password changes nothing"
+echo "$data" >"$tmp/select"
+volume "$data" "$data_password" "$new_password"
+if attempt 0 "$data_password" "$new_password" "$new_password"; then fail "a data drive refuses a new password it already has"; fi
+said "That password already opens a key slot on $data. Choose another."
+pass "a new password that already opens a key slot is refused, on the system disk and data drives"
 
 # Only the owner's slot changes the system disk. A second key an earlier setup
 # added (a recovery key) is refused before anything changes, and so is a change
