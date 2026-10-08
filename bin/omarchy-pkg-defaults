@@ -30,5 +30,16 @@ for list in "${lists[@]}"; do
   fi
 done
 
-# One name per line, first occurrence kept, in list order.
-sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "${files[@]}" | awk '!seen[$0]++'
+names() {
+  sed -e 's/[[:space:]]*#.*$//' -e '/^[[:space:]]*$/d' "$@"
+}
+
+# One name per line, first occurrence kept, in list order. An aarch64 platform
+# leaves out the base packages that only x86_64 builds.
+if [[ $platform == "generic" ]]; then
+  names "${files[@]}" | awk '!seen[$0]++'
+else
+  names "${files[@]}" | awk -v skips=<(names "$OMARCHY_PATH/install/omarchy-x86_64-only.packages") '
+    BEGIN { while ((getline name < skips) > 0) skip[name] = 1 }
+    !skip[$0] && !seen[$0]++'
+fi

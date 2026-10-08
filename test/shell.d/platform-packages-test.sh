@@ -26,7 +26,10 @@ for platform in apple-silicon generic-aarch64 generic; do
   printf '%s\n' "$defaults" >"$work/$platform.packages"
 
   [[ -z $(sort "$work/$platform.packages" | uniq -d) ]] || fail "$platform: each package is listed once"
-  [[ $(head -n "$(wc -l <<<"$base")" "$work/$platform.packages") == "$base" ]] ||
+  # aarch64 platforms leave out the base packages only x86_64 builds.
+  expected_base=$base
+  [[ $platform == "generic" ]] || expected_base=$(grep -vxF -f <(names "$ROOT/install/omarchy-x86_64-only.packages") <<<"$base")
+  [[ $(head -n "$(wc -l <<<"$expected_base")" "$work/$platform.packages") == "$expected_base" ]] ||
     fail "$platform: the base list comes first, unchanged"
 
   case $platform in
@@ -70,6 +73,21 @@ for platform in apple-silicon generic-aarch64 generic; do
   fi
 done
 pass "a platform list joins only its own platform's set"
+
+# Base packages that only x86_64 builds stay out of every aarch64 set.
+for platform in apple-silicon generic-aarch64 generic; do
+  defaults=$(OMARCHY_PATH="$ROOT" omarchy-pkg-defaults "$platform")
+  while read -r name; do
+    [[ -n $name && $name != \#* ]] || continue
+    if [[ $platform == "generic" ]]; then
+      grep -Fxq "$name" <<<"$defaults" || fail "x86_64 keeps $name"
+    else
+      ! grep -Fxq "$name" <<<"$defaults" || fail "$platform leaves out the x86_64-only $name"
+    fi
+  done <"$ROOT/install/omarchy-x86_64-only.packages"
+done
+grep -Fxq superwhisper-bin "$ROOT/install/omarchy-x86_64-only.packages" || fail "superwhisper-bin is listed as x86_64-only"
+pass "base packages only x86_64 builds stay out of every aarch64 set"
 
 ! omarchy-pkg-defaults riscv 2>/dev/null || fail "an unknown platform is refused"
 failing_bin="$work/failing-bin"
