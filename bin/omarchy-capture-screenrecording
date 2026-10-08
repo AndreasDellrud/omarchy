@@ -520,7 +520,11 @@ fi
     # gone waits its turn, and a request the start used up by then is done.
     if ! flock -w 1 9; then
       touch "$CANCEL_FILE"
-      if [[ -e $STARTING_FILE ]]; then
+      # A start that was killed leaves its marker: it counts only while that
+      # start still runs.
+      starter=""
+      [[ -r $STARTING_FILE ]] && starter=$(<"$STARTING_FILE")
+      if [[ $starter =~ ^[0-9]+$ ]] && kill -0 "$starter" 2>/dev/null; then
         exit 0
       fi
       flock 9 || exit 1
@@ -533,7 +537,7 @@ fi
       exit 1
     else
       rm -f "$CANCEL_FILE"
-      touch "$STARTING_FILE"
+      echo $$ >"$STARTING_FILE"
       if start_screenrecording; then
         rm -f "$STARTING_FILE"
         # Cancelled while the recording was being saved as started.

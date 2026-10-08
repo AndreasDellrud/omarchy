@@ -208,3 +208,21 @@ timeout 10 tail --pid="$(<"$tmp/late-stop-pid")" -f /dev/null || fail "the late 
 [[ ! -e $XDG_RUNTIME_DIR/omarchy-screenrecord-pid && ! -e $XDG_RUNTIME_DIR/omarchy-screenrecord-cancel ]] ||
   fail "a late stop leaves no state behind"
 pass "a stop that waits behind a finishing start still ends the recording"
+
+"$record" --stop-recording >/dev/null 2>&1 || true
+
+# A start that was killed leaves its marker behind. A toggle that waits on the
+# lock (held here as a stop would) does not take that stale marker for a start
+# still in progress: it waits its turn and starts the recording.
+rm -f "$tmp/recorder-pid" "$tmp/recordings/"* "$XDG_RUNTIME_DIR/omarchy-screenrecord-cancel"
+sleep 300 & dead=$!
+kill "$dead"; wait "$dead" 2>/dev/null || true
+echo "$dead" >"$XDG_RUNTIME_DIR/omarchy-screenrecord-starting"
+/usr/bin/flock "$XDG_RUNTIME_DIR/omarchy-screenrecord.lock" sleep 2 & holder=$!
+sleep 0.3
+timeout 15 "$record" --fullscreen --resolution=1280x800 >/dev/null 2>&1 || fail "a toggle behind a stale start marker finishes"
+wait "$holder" || true
+[[ -s $XDG_RUNTIME_DIR/omarchy-screenrecord-pid ]] && kill -0 "$(<"$tmp/recorder-pid")" 2>/dev/null ||
+  fail "a toggle behind a stale start marker starts the recording instead of cancelling a start that is gone"
+"$record" --stop-recording >/dev/null 2>&1 || true
+pass "a killed start's leftover marker does not swallow a later toggle"
