@@ -284,7 +284,10 @@ every platform (`install/helpers/pacman.sh`); a channel change backs up
 the old pair first.
 x86_64's are `default/pacman/pacman-<channel>.conf` and
 `mirrorlist-<channel>`; Snapdragon and other aarch64 machines use
-`default/pacman/aarch64/`, Arch Linux ARM's repositories with Omarchy's; Apple
+`default/pacman/aarch64/`, Omarchy's repository ahead of Arch Linux ARM's, as
+x86_64 puts it ahead of Arch's (migration 1791403252 reorders existing
+machines the same way, and a refresh can then move a package Omarchy also
+publishes to Omarchy's build, downgrading it if that build is older); Apple
 Silicon uses `default/pacman/apple-silicon/`, which puts Omarchy and Asahi ALARM
 ahead of Arch Linux ARM. Omarchy publishes aarch64 packages on edge alone so
 far, and the `omarchy` and `omarchy-settings` packages there for stable and rc
