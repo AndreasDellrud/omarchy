@@ -215,8 +215,8 @@ pass "a stop that waits behind a finishing start still ends the recording"
 # lock (held here as a stop would) does not take that stale marker for a start
 # still in progress: it waits its turn and starts the recording.
 rm -f "$tmp/recorder-pid" "$tmp/recordings/"* "$XDG_RUNTIME_DIR/omarchy-screenrecord-cancel"
-sleep 300 & dead=$!
-kill "$dead"; wait "$dead" 2>/dev/null || true
+true & dead=$!
+wait "$dead"
 echo "$dead" >"$XDG_RUNTIME_DIR/omarchy-screenrecord-starting"
 /usr/bin/flock "$XDG_RUNTIME_DIR/omarchy-screenrecord.lock" sleep 2 & holder=$!
 sleep 0.3
