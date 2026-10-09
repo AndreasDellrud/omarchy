@@ -19,35 +19,41 @@ fi
 pass "installer input selection reaches the first desktop session"
 
 work=$(mktemp -d)
-dbus-monitor --session "type='method_call',interface='org.freedesktop.Notifications',member='Notify'" > "$ARTIFACTS/input-method-notifications.log" 2>&1 &
-notification_monitor=$!
 config_home=${XDG_CONFIG_HOME:-$HOME/.config}
 data_home=${XDG_DATA_HOME:-$HOME/.local/share}
 paths=("$config_home/fcitx5" "$config_home/fontconfig/conf.d/50-omarchy-input-method.conf" "$data_home/dbus-1/services/org.fcitx.Fcitx5.service")
-for (( i = 0; i < ${#paths[@]}; i++ )); do
-  if [[ -e ${paths[i]} || -L ${paths[i]} ]]; then
-    cp -a "${paths[i]}" "$work/backup-$i"
-  fi
-done
+python "$ROOT/test/acceptance.d/input-method-state.py" backup "$work/state" "${paths[@]}"
 
+notification_monitor=""
 cleanup() {
-  kill "$notification_monitor" 2>/dev/null || true
-  wait "$notification_monitor" 2>/dev/null || true
+  local status=$?
+  if [[ -n $notification_monitor ]]; then
+    kill "$notification_monitor" 2>/dev/null || true
+    wait "$notification_monitor" 2>/dev/null || true
+  fi
   close_windows '^org\.omarchy\.ime-test$'
   close_windows '^org\.omarchy\.ime-test-gtk$|^org\.qt-project\.qml$|^chrome-.*_omarchy-ime-entry\.html-Default$'
-  systemctl --user stop omarchy-fcitx5.service
-  for (( i = 0; i < ${#paths[@]}; i++ )); do
-    rm -rf "${paths[i]}"
-    if [[ -e $work/backup-$i || -L $work/backup-$i ]]; then
-      mkdir -p "$(dirname "${paths[i]}")"
-      cp -a "$work/backup-$i" "${paths[i]}"
-    fi
-  done
-  busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null
-  systemctl --user start omarchy-fcitx5.service
-  rm -rf "$work"
+  systemctl --user stop omarchy-fcitx5.service || status=1
+  python "$ROOT/test/acceptance.d/input-method-state.py" restore "$work/state" || status=1
+  busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus ReloadConfig >/dev/null || status=1
+  systemctl --user start omarchy-fcitx5.service || status=1
+  if (( status == 0 )); then
+    rm -rf "$work"
+  else
+    printf 'Input test snapshot retained at %s\n' "$work/state" >&2
+  fi
+  exit "$status"
 }
 trap cleanup EXIT
+
+dbus-monitor --session "type='method_call',interface='org.freedesktop.Notifications',member='Notify'" \
+  "type='signal',interface='org.freedesktop.DBus',member='NameOwnerChanged',arg0='org.fcitx.Fcitx5'" > "$ARTIFACTS/input-method-notifications.log" 2>&1 &
+notification_monitor=$!
+monitor_ready() {
+  kill -0 "$notification_monitor" && grep -q 'member=NameAcquired' "$ARTIFACTS/input-method-notifications.log"
+}
+wait_until "notification monitor attaches" 10 monitor_ready
+initial_owner=$(busctl --user call org.freedesktop.DBus /org/freedesktop/DBus org.freedesktop.DBus GetNameOwner s org.fcitx.Fcitx5 | cut -d '"' -f 2)
 
 cat > "$work/reader" <<'SH'
 #!/bin/bash
@@ -97,7 +103,8 @@ HTML
 compose() {
   fcitx5-remote -s "$method"
   fcitx5-remote -c
-  wtype -M ctrl -M shift -k space -m shift -m ctrl
+  # Use the controller for composition; wtype cannot prove global shortcuts.
+  fcitx5-remote -o
   case "$method" in
     mozc) wtype "nihongo"; wtype -k space ;;
     hangul) wtype "gksrmf" ;;
@@ -168,7 +175,12 @@ for method in mozc hangul pinyin chewing; do
   done
 done
 
-if grep -q 'member=Notify' "$ARTIFACTS/input-method-notifications.log"; then
+# Stop and drain the monitor before reading a complete final call.
+kill -0 "$notification_monitor" 2>/dev/null || fail "notification monitor stays attached"
+kill "$notification_monitor" 2>/dev/null || true
+wait "$notification_monitor" 2>/dev/null || true
+notification_monitor=""
+if ! python "$ROOT/test/acceptance.d/input-method-notifications.py" "$ARTIFACTS/input-method-notifications.log" "$initial_owner"; then
   fail "input setup and composition produce no additional notifications" "$(cat "$ARTIFACTS/input-method-notifications.log")"
 fi
 pass "all four input engines remain quiet during setup and composition"
