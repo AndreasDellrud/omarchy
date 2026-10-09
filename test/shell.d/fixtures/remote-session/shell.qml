@@ -3,7 +3,10 @@ import Quickshell
 
 // Drives the real remote-session service against a stub gliff-server on PATH:
 // idle at start, active with the ssh peer once a server runs, idle again after
-// it exits, with a notification announcing each transition.
+// it exits, with a notification announcing each transition. The service is
+// never refreshed by hand: a one-shot grim capture raises the same Hyprland
+// screencast event that gliff-server does, so the event path is what gets
+// exercised.
 ShellRoot {
   id: root
 
@@ -27,6 +30,10 @@ ShellRoot {
   function writeResult() {
     var payload = JSON.stringify({ ok: failures.length === 0, failures: failures })
     Quickshell.execDetached(["bash", "-lc", "printf '%s' " + shellQuote(payload) + " > " + shellQuote(resultPath)])
+  }
+
+  function captureFrame() {
+    Quickshell.execDetached(["grim", "-g", "0,0 1x1", Quickshell.env("OMARCHY_QML_TEST_FRAME")])
   }
 
   function step(delay, action) {
@@ -58,14 +65,14 @@ ShellRoot {
       root.assertTrue(service.active === false, "service starts idle without a gliff server")
       Quickshell.execDetached(["bash", "-c", "SSH_CONNECTION='10.0.0.5 51234 10.0.0.1 22' gliff-server --stdio & echo $! > " + root.shellQuote(root.stubPidFile)])
     })
-    step(1200, function() { service.refresh() })
+    step(1200, function() { root.captureFrame() })
     step(1800, function() {
       root.assertTrue(service.active === true, "service reports an active session while gliff-server runs")
       root.assertTrue(service.sessions === 1, "service counts one session")
       root.assertTrue(JSON.stringify(service.peers) === JSON.stringify(["10.0.0.5"]), "service reports the ssh peer, got " + JSON.stringify(service.peers))
       Quickshell.execDetached(["bash", "-c", "kill \"$(cat " + root.shellQuote(root.stubPidFile) + ")\""])
     })
-    step(2400, function() { service.refresh() })
+    step(2400, function() { root.captureFrame() })
     step(3000, function() {
       root.assertTrue(service.active === false, "service returns to idle once gliff-server exits")
       root.writeResult()

@@ -27,7 +27,7 @@ const manifest = JSON.parse(read('shell/plugins/services/remote-session/manifest
 assertEqual(manifest.id, 'omarchy.remote-session', 'service manifest id matches the indicator lookup')
 assert(manifest.kinds.includes('service') && manifest.entryPoints.service === 'Service.qml', 'service manifest declares a service entry point')
 assert(service.includes('target: Hyprland') && service.includes('isCaptureEvent(event ? event.name : "")'), 'service re-probes on Hyprland screencast events')
-assert(service.includes('pgrep -x gliff-server'), 'service probes for the gliff server process')
+assert(service.includes('pgrep -x -u "$(id -u)" gliff-server'), 'service probes for this user\'s gliff server processes')
 assert(service.includes('running: root.active'), 'service only polls while a session is active')
 assert(service.includes('root.stateLoaded && state.active !== wasActive'), 'service announces transitions only, not the initial probe')
 assert(service.includes('"Remote session started"') && service.includes('"Remote session ended"'), 'service announces both session start and end')
@@ -48,6 +48,7 @@ const shell = read('shell/shell.qml')
 assert((shell.match(/"omarchy\.remote-session"/g) || []).length >= 2, 'third-party bar clones can read the remote session service')
 const api = read('shell/services/PluginFirstPartyServiceApi.qml')
 assert(api.includes('property bool active: false') && api.includes('property var peers: []'), 'service proxy exposes the remote session state')
+assert(api.includes('serviceId === "omarchy.remote-session" && _refresh') && shell.includes('_refresh: function()'), 'service proxy forwards refresh for cloned indicator widgets')
 JS
 
 TMPDIR=$(mktemp -d)
@@ -65,7 +66,7 @@ pass "remote session probe is valid bash"
 
 cat >"$TMPDIR/bin/pgrep" <<'SH'
 #!/bin/bash
-[[ $1 == "-x" && $2 == "gliff-server" ]] || exit 2
+[[ $1 == "-x" && $2 == "-u" && $3 == "$(id -u)" && $4 == "gliff-server" ]] || exit 2
 [[ -n ${GLIFF_PIDS:-} ]] || exit 1
 printf '%s\n' $GLIFF_PIDS
 SH

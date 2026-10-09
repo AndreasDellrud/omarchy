@@ -29,6 +29,7 @@ if ! command -v quickshell >/dev/null 2>&1; then
 fi
 
 require_command jq
+require_command grim
 
 TMPDIR=$(mktemp -d)
 result="$TMPDIR/result.json"
@@ -39,7 +40,8 @@ mkdir -p "$config_dir" "$TMPDIR/home" "$TMPDIR/bin"
 cp "$SHELL_TEST_DIR/fixtures/remote-session/shell.qml" "$config_dir/shell.qml"
 
 # A stand-in for the real server: the probe matches it by process name, and
-# its ssh peer comes from the environment the fixture launches it with.
+# its ssh peer comes from the environment the fixture launches it with. It
+# cannot capture the screen, so the fixture uses grim for the screencast event.
 cat >"$TMPDIR/bin/gliff-server" <<'SH'
 #!/bin/bash
 sleep 30
@@ -54,6 +56,7 @@ chmod +x "$TMPDIR/bin/gliff-server" "$TMPDIR/bin/omarchy-notification-send"
 OMARCHY_PATH="$ROOT" \
 OMARCHY_QML_TEST_RESULT="$result" \
 OMARCHY_QML_TEST_STUB_PID="$TMPDIR/stub.pid" \
+OMARCHY_QML_TEST_FRAME="$TMPDIR/frame.png" \
 OMARCHY_TEST_NOTIFICATIONS="$notifications" \
 HOME="$TMPDIR/home" \
 XDG_CONFIG_HOME="$TMPDIR/home/.config" \
@@ -85,6 +88,9 @@ if ! jq -e '.ok == true' "$result" >/dev/null; then
   fail "remote session service tracks a gliff-server session"
 fi
 pass "remote session service tracks a gliff-server session"
+
+[[ -s $TMPDIR/frame.png ]] || fail "the fixture raised screencast events through grim"
+pass "the fixture raised screencast events through grim"
 
 sleep 0.3
 [[ -f $notifications ]] || fail "remote session service announces sessions"

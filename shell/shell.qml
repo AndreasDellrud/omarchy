@@ -490,6 +490,10 @@ ShellRoot {
       _selectPlayer: function(playerKey) {
         var target = service()
         if (target && typeof target.selectPlayer === "function") target.selectPlayer(playerKey)
+      },
+      _refresh: function() {
+        var target = service()
+        if (target && typeof target.refresh === "function") target.refresh()
       }
     })
     if (!api) return null

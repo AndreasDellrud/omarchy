@@ -72,10 +72,12 @@ Item {
     onTriggered: root.refresh()
   }
 
+  // Only this user's servers count: another account's session on the same
+  // machine captures its own desktop, not this one.
   Process {
     id: statusProbe
     command: ["bash", "-c",
-      'for pid in $(pgrep -x gliff-server); do ' +
+      'for pid in $(pgrep -x -u "$(id -u)" gliff-server); do ' +
       'peer=$(tr "\\0" "\\n" < "/proc/$pid/environ" 2>/dev/null | sed -n "s/^SSH_CONNECTION=\\([^ ]*\\).*/\\1/p"); ' +
       'printf "%s %s\\n" "$pid" "$peer"; ' +
       'done']
