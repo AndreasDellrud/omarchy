@@ -38,12 +38,16 @@ config_dir="$TMPDIR/remote-session"
 mkdir -p "$config_dir" "$TMPDIR/home" "$TMPDIR/bin"
 cp "$SHELL_TEST_DIR/fixtures/remote-session/shell.qml" "$config_dir/shell.qml"
 
-# A stand-in for the real server: the probe matches it by process name, and
-# its ssh peer comes from the environment the fixture launches it with. It
-# cannot capture the screen, so the fixture uses grim for the screencast event.
+# A stand-in for the real server: the probe matches it by process name, so it
+# must stay a script called gliff-server rather than exec into sleep, and it
+# takes its sleep down with it when killed. Its ssh peer comes from the
+# environment the fixture launches it with. It cannot capture the screen, so
+# the fixture uses grim for the screencast event.
 cat >"$TMPDIR/bin/gliff-server" <<'SH'
 #!/bin/bash
-sleep 30
+sleep 30 &
+trap 'kill $!' TERM EXIT
+wait $!
 SH
 
 chmod +x "$TMPDIR/bin/gliff-server"
@@ -62,7 +66,7 @@ PATH="$TMPDIR/bin:$ROOT/bin:$PATH" \
   quickshell -p "$config_dir" --no-color >"$log" 2>&1 &
 QS_PID=$!
 
-for _ in {1..100}; do
+for _ in {1..150}; do
   [[ -s $result ]] && break
   if ! kill -0 "$QS_PID" 2>/dev/null; then
     sed -n '1,160p' "$log" >&2

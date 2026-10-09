@@ -1,25 +1,26 @@
-// Hyprland emits these whenever a screencopy session starts or stops, which
+// Hyprland emits this whenever a screencopy session starts or stops, which
 // covers gliff-server (ext-image-copy-capture) as well as screen recorders
-// and browser screen shares, so the event is only a cue to re-probe.
+// and browser screen shares, so the event is only a cue to re-probe. The
+// matching screencastv2 event always accompanies it and is left alone so one
+// transition costs one probe.
 function isCaptureEvent(name) {
-  var event = String(name || "")
-  return event === "screencast" || event === "screencastv2"
+  return String(name || "") === "screencast"
 }
 
 // Parses the probe output: one "<pid> [peer]" line per running gliff-server,
 // where peer is the ssh client address when the server was spawned over ssh.
 function stateFromOutput(text) {
   var lines = String(text || "").split("\n")
-  var sessions = 0
+  var active = false
   var peers = []
   for (var i = 0; i < lines.length; i++) {
     var parts = lines[i].trim().split(/\s+/)
     if (parts[0] === "") continue
-    sessions++
+    active = true
     var peer = parts[1] || ""
     if (peer !== "" && peers.indexOf(peer) === -1) peers.push(peer)
   }
-  return { active: sessions > 0, sessions: sessions, peers: peers }
+  return { active: active, peers: peers }
 }
 
 if (typeof module !== "undefined") {

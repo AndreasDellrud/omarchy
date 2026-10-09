@@ -1,4 +1,5 @@
 import QtQuick
+import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import "RemoteSessionModel.js" as RemoteSessionModel
@@ -14,7 +15,6 @@ Item {
 
   property bool stateLoaded: false
   property bool active: false
-  property int sessions: 0
   property var peers: []
 
   property bool refreshPending: false
@@ -30,7 +30,6 @@ Item {
 
   function applyProbe(text) {
     var state = RemoteSessionModel.stateFromOutput(text)
-    root.sessions = state.sessions
     root.peers = state.peers
     root.active = state.active
     root.stateLoaded = true
@@ -38,33 +37,37 @@ Item {
 
   Component.onCompleted: refresh()
 
-  // gliff-server captures the screen through ext-image-copy-capture, so every
-  // session start and stop surfaces as a screencast event; the probe decides
-  // whether it was gliff or another screencopy client.
+  // gliff-server captures the screen through ext-image-copy-capture, so a
+  // session start surfaces as a Hyprland screencast event. The probe decides
+  // whether it was gliff or another screencopy client, and a short debounce
+  // folds the event bursts Hyprland sends around one transition into one probe.
   Connections {
     target: Hyprland
     function onRawEvent(event) {
-      if (RemoteSessionModel.isCaptureEvent(event ? event.name : "")) root.refresh()
+      if (RemoteSessionModel.isCaptureEvent(event ? event.name : "")) eventDebounce.restart()
     }
   }
 
-  // Safety net while a session is active, in case a stop event is missed.
   Timer {
-    interval: 15000
+    id: eventDebounce
+    interval: 150
+    repeat: false
+    onTriggered: root.refresh()
+  }
+
+  // The end of a session often has no event: Hyprland reports the screencast
+  // stopped as soon as frames pause for half a second, and says nothing more
+  // when the server later exits. So poll while a session is active.
+  Timer {
+    interval: 2000
     repeat: true
     running: root.active
     onTriggered: root.refresh()
   }
 
-  // Only this user's servers count: another account's session on the same
-  // machine captures its own desktop, not this one.
   Process {
     id: statusProbe
-    command: ["bash", "-c",
-      'for pid in $(pgrep -x -u "$(id -u)" gliff-server); do ' +
-      'peer=$(tr "\\0" "\\n" < "/proc/$pid/environ" 2>/dev/null | sed -n "s/^SSH_CONNECTION=\\([^ ]*\\).*/\\1/p"); ' +
-      'printf "%s %s\\n" "$pid" "$peer"; ' +
-      'done']
+    command: ["bash", Quickshell.env("OMARCHY_PATH") + "/shell/plugins/services/remote-session/probe.sh"]
     stdout: StdioCollector {
       waitForEnd: true
       onStreamFinished: root.applyProbe(text)
