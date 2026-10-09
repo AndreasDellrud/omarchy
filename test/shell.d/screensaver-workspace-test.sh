@@ -23,7 +23,7 @@ cat >"$tmpdir/bin/hyprctl" <<'SH'
 printf '%s\n' "$*" >>"$TEST_DIR/calls"
 case "$*" in
   'monitors -j')
-    printf '[{"name":"DP-1","specialWorkspace":{"name":""}},{"name":"DP-2","specialWorkspace":{"name":"special:scratchpad"}}]\n'
+    printf '[{"name":"DP-1","width":2560,"height":1440,"scale":1,"transform":0,"specialWorkspace":{"name":""}},{"name":"DP-2","width":1920,"height":1080,"scale":2,"transform":0,"specialWorkspace":{"name":"special:scratchpad"}}]\n'
     ;;
   'clients -j')
     cat "$TEST_DIR/clients.json"
@@ -48,9 +48,11 @@ chmod +x "$tmpdir/bin/"*
 
 : >"$tmpdir/calls"
 : >"$tmpdir/spawned"
+mkdir -p "$tmpdir/.config/omarchy/branding"
+cp "$ROOT/logo.txt" "$tmpdir/.config/omarchy/branding/screensaver.txt"
 printf '[{"class":"org.omarchy.screensaver","mapped":true}]\n' >"$tmpdir/clients.json"
 
-PATH="$tmpdir/bin:$PATH" TEST_DIR="$tmpdir" XDG_RUNTIME_DIR="$tmpdir" HYPRLAND_INSTANCE_SIGNATURE=test \
+HOME="$tmpdir" PATH="$tmpdir/bin:$PATH" TEST_DIR="$tmpdir" XDG_RUNTIME_DIR="$tmpdir" HYPRLAND_INSTANCE_SIGNATURE=test \
   timeout 10 "$ROOT/bin/omarchy-launch-screensaver" force
 
 mapfile -t spawns < <(grep exec_cmd "$tmpdir/calls")
@@ -61,6 +63,11 @@ pass "the screensaver opens on its own special workspace, leaving a fullscreen w
 [[ ${spawns[1]} == *"[workspace special:scratchpad]"* ]] ||
   fail "the screensaver shares a special workspace that is already showing" "${spawns[1]}"
 pass "the screensaver shares a special workspace that is already showing"
+[[ ${spawns[0]} == *"size=18 "* ]] || fail "the logo is drawn at full size where it fits" "${spawns[0]}"
+pass "the logo is drawn at full size where it fits"
+[[ ${spawns[1]} == *"size=14 "* ]] ||
+  fail "the font shrinks so the logo fits a 1080p monitor at scale 2 instead of being cropped" "${spawns[1]}"
+pass "the font shrinks so the logo fits a 1080p monitor at scale 2 instead of being cropped"
 
 # Emptying a special workspace focuses its monitor; the last screensaver to close must not keep focus.
 : >"$tmpdir/calls"
@@ -82,7 +89,7 @@ pass "focus returns to the monitor that had it once the screensaver closes"
 kill "$(<"$tmpdir/socat.pid")"
 : >"$tmpdir/calls"
 : >"$tmpdir/spawned"
-PATH="$tmpdir/bin:$PATH" TEST_DIR="$tmpdir" XDG_RUNTIME_DIR="$tmpdir" HYPRLAND_INSTANCE_SIGNATURE=test \
+HOME="$tmpdir" PATH="$tmpdir/bin:$PATH" TEST_DIR="$tmpdir" XDG_RUNTIME_DIR="$tmpdir" HYPRLAND_INSTANCE_SIGNATURE=test \
   timeout 10 "$ROOT/bin/omarchy-launch-screensaver" force
 for (( attempt = 0; attempt < 100; attempt++ )); do
   (( $(grep -c 'hl.dsp.focus({ monitor = "DP-1" })' "$tmpdir/calls") == 3 )) && break
