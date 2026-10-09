@@ -89,6 +89,7 @@ pass "focus returns to the monitor that had it once the screensaver closes"
 kill "$(<"$tmpdir/socat.pid")"
 : >"$tmpdir/calls"
 : >"$tmpdir/spawned"
+printf '%2000s\n' x >"$tmpdir/.config/omarchy/branding/screensaver.txt"
 HOME="$tmpdir" PATH="$tmpdir/bin:$PATH" TEST_DIR="$tmpdir" XDG_RUNTIME_DIR="$tmpdir" HYPRLAND_INSTANCE_SIGNATURE=test \
   timeout 10 "$ROOT/bin/omarchy-launch-screensaver" force
 for (( attempt = 0; attempt < 100; attempt++ )); do
@@ -98,6 +99,10 @@ done
 (( $(grep -c 'hl.dsp.focus({ monitor = "DP-1" })' "$tmpdir/calls") == 3 )) ||
   fail "focus returns without waiting for a close that has already happened" "$(<"$tmpdir/calls")"
 pass "focus returns without waiting for a close that has already happened"
+mapfile -t spawns < <(grep exec_cmd "$tmpdir/calls")
+(( ${#spawns[@]} == 2 )) && [[ ${spawns[0]} == *"size=6 "* && ${spawns[1]} == *"size=6 "* ]] ||
+  fail "art too wide to fit still gets a usable font size" "$(<"$tmpdir/calls")"
+pass "art too wide to fit still gets a usable font size"
 
 # The launcher's workspace only holds for the first map. A terminal mapped again as it closes falls back to
 # the class rule, which must keep it off the regular workspaces where its fullscreen rule would take over.
