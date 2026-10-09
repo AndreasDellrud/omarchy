@@ -1071,6 +1071,23 @@ Item {
     shown: root.opened && root.rowsLoaded
     WlrLayershell.namespace: "omarchy-menu"
 
+    // Exclusive routes every pointer event to this surface whatever output the
+    // cursor is on, so the twins below never see a click. Prime with it to take
+    // focus on map, as KeyboardPanel does, then settle on OnDemand.
+    property bool focusPrimed: false
+    shownKeyboardFocus: focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
+    onBackingWindowVisibleChanged: {
+      focusPrimed = false
+      if (backingWindowVisible) focusPrimeTimer.restart()
+      else focusPrimeTimer.stop()
+    }
+
+    Timer {
+      id: focusPrimeTimer
+      interval: 75
+      onTriggered: if (panel.backingWindowVisible) panel.focusPrimed = true
+    }
+
     // The card opens centered exactly as always. The first search keystroke
     // or submenu move freezes the top line where it currently sits — from
     // then on the card grows and shrinks downward instead of re-centering
@@ -1473,6 +1490,34 @@ Item {
         Item {
           width: parent.width
           height: 0
+        }
+      }
+    }
+  }
+
+  // The panel only spans its own output, so a click on another monitor never
+  // reaches its scrim. Give every other output a transparent twin to catch it.
+  // Keyboard focus is None so crossing onto a twin leaves focus on the menu.
+  Variants {
+    model: panel.visible ? Quickshell.screens : []
+
+    delegate: Component {
+      PanelWindow {
+        required property var modelData
+
+        screen: modelData
+        visible: panel.visible && !!panel.targetScreen && modelData.name !== panel.targetScreen.name
+        color: "transparent"
+        exclusionMode: ExclusionMode.Ignore
+        WlrLayershell.namespace: "omarchy-menu-dismiss"
+        WlrLayershell.layer: WlrLayer.Overlay
+        WlrLayershell.keyboardFocus: WlrKeyboardFocus.None
+        anchors { top: true; left: true; bottom: true; right: true }
+
+        MouseArea {
+          anchors.fill: parent
+          acceptedButtons: Qt.AllButtons
+          onPressed: root.cancel()
         }
       }
     }
