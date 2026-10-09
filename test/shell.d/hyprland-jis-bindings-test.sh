@@ -126,3 +126,8 @@ done
 
 TEST_KEYBOARD_ONLY=true TEST_FCITX5_CONFIG=$freed assert_fires "keyboard-only profiles skip the terminal controller call" \
   "non_consuming" "$prefix" "foot" "terminal"
+
+assert_fires "Super + I toggles configured input independently of custom Fcitx keys" \
+  "exec fcitx5-remote --check -t" "SUPER + I" "chromium"
+TEST_KEYBOARD_ONLY=true assert_fires "Super + I leaves keyboard-only profiles alone" \
+  "" "SUPER + I" "foot" "terminal"

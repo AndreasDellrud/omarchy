@@ -63,7 +63,7 @@ class InputMethodTest(unittest.TestCase):
         keys = setup.sections((self.config / "fcitx5/config").read_text())
         self.assertEqual(keys["Behavior"]["ActiveByDefault"], "False")
         self.assertNotIn("Control+space", keys["Hotkey/TriggerKeys"].values())
-        self.assertIn("Control+Shift+space", keys["Hotkey/TriggerKeys"].values())
+        self.assertEqual(set(keys["Hotkey/TriggerKeys"].values()), {"Zenkaku_Hankaku", "Hangul"})
 
   def test_vconsole_variants_quotes_and_japanese_without_preference(self):
     self.preference.unlink()

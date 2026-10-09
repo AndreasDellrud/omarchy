@@ -15,7 +15,7 @@ assertEqual(model.inputLabel({}, 'EN'), 'EN', 'a stopped input service retains t
 assertEqual(model.inputLabel({ current: 'hangul' }, 'EN'), '한', 'Korean input has a distinct label')
 assertEqual(model.inputLabel({ current: 'custom', language: 'vi' }, 'EN'), 'VI', 'other engines use their reported language')
 assertEqual(model.inputTooltip(japanese, 'English (US)', false).includes('Space twice'), true, 'Japanese explains character choices')
-assertEqual(model.inputTooltip(japanese, 'English (US)', false).includes('Ctrl + Shift + Space'), true, 'the input toggle shortcut is discoverable')
+assertEqual(model.inputTooltip(japanese, 'English (US)', false).includes('Super + I'), true, 'the input toggle shortcut is discoverable')
 assertEqual(model.inputTooltip(japanese, 'English (US)', true).includes('Right-click'), true, 'combined input and layout switching stays discoverable')
 assertEqual(model.inputTooltip({ methods: ['keyboard-fr'] }, 'French', false), 'French\nClick to set up an input language', 'one foreign mode offers input setup')
 assertEqual(model.showIndicator('EN', false, false), false, 'English alone stays hidden')

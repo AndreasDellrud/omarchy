@@ -33,6 +33,14 @@ local function has_input_method()
   return found
 end
 
+-- Keep the desktop shortcut independent of Fcitx's custom switching keys.
+-- Checking the profile on demand lets live setup work without a reload.
+o.bind("SUPER + I", "Switch input language", function()
+  if has_input_method() then
+    hl.exec_cmd("fcitx5-remote --check -t")
+  end
+end)
+
 -- Preserve custom Ctrl + Space triggers. Without a
 -- [Hotkey/TriggerKeys] list in the config, fcitx5 uses its default, which has
 -- Ctrl + Space.

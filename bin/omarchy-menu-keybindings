@@ -332,7 +332,6 @@ dynamic_bindings() {
 static_bindings() {
   echo "SHIFT ALT,L,Copy URL from Web App,sendshortcut,SHIFT ALT,L,"
   echo "SHIFT ALT,D,Download Video from Web App,sendshortcut,SHIFT ALT,D,"
-  echo "CTRL SHIFT,SPACE,Switch input language,exec,fcitx5-remote -t"
 }
 
 # Actions Omarchy binds to a second chord meant as an alternative, named one at
