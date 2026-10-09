@@ -16,6 +16,11 @@ echo "Installing Steam..."
 omarchy-install-gaming-gpu-lib32
 omarchy-pkg-add steam
 
+# Steam Input needs /dev/uinput to hand games a controller. Steam's udev rule
+# cannot reach that node until uinput loads, so load it and apply the rule now.
+sudo modprobe uinput
+sudo udevadm trigger --settle --sysname-match=uinput
+
 echo ""
 echo "Steam will start automatically now. This might take a while..."
 
