@@ -165,20 +165,14 @@ Panel {
   readonly property real outputVolume: volumeSink && volumeSink.audio ? volumeSink.audio.volume : 0
   readonly property bool outputMuted: volumeSink && volumeSink.audio ? volumeSink.audio.muted : false
   // A virtual source is untyped in Quickshell (see Model.isUntypedSource), so
-  // its volume and mute go through wpctl (UntypedInput), and its level through
-  // omarchy-audio-source-level: Quickshell's peak monitor takes typed nodes only.
+  // its volume and mute go through wpctl (UntypedInput), and the panel shows no
+  // level meter for it: Quickshell's peak monitor takes typed nodes only.
   readonly property bool inputViaWpctl: UntypedInput.active
   readonly property bool inputLevelKnown: !inputViaWpctl || UntypedInput.known
   readonly property real inputVolume: inputViaWpctl ? UntypedInput.volume : (source && source.audio ? source.audio.volume : 0)
   readonly property bool inputMuted: inputViaWpctl ? UntypedInput.muted : (source && source.audio ? source.audio.muted : false)
   readonly property var inputPeakNode: inputViaWpctl ? null : source
-  property real untypedInputPeak: 0
-  readonly property string meteredSourceName: opened && inputViaWpctl && source.name ? String(source.name) : ""
-  // Setting running again restarts the meter on the new source.
-  onMeteredSourceNameChanged: {
-    untypedInputLevel.running = false
-    untypedInputLevel.running = meteredSourceName !== ""
-  }
+  readonly property bool inputLevelShown: !!inputPeakNode
 
   onRawAudioSinksChanged: if (rawAudioSinks.length > 0) cachedAudioSinks = rawAudioSinks
   onRawAudioSourcesChanged: if (rawAudioSources.length > 0) cachedAudioSources = rawAudioSources
@@ -639,23 +633,6 @@ Panel {
     enabled: root.opened && !!root.inputPeakNode
   }
 
-  // Tied to the shell's life, and started again if audio restarts under it.
-  Process {
-    id: untypedInputLevel
-    command: ["setpriv", "--pdeathsig", "TERM", "omarchy-audio-source-level", root.meteredSourceName]
-    stdout: SplitParser {
-      onRead: function(line) { root.untypedInputPeak = Math.max(0, Math.min(1, parseFloat(line) || 0)) }
-    }
-    onRunningChanged: if (!running) root.untypedInputPeak = 0
-    onExited: if (root.meteredSourceName !== "") untypedInputLevelRetry.restart()
-  }
-
-  Timer {
-    id: untypedInputLevelRetry
-    interval: 2000
-    onTriggered: if (root.meteredSourceName !== "" && !untypedInputLevel.running) untypedInputLevel.running = true
-  }
-
   Process {
     id: sinkAvailabilityProc
     command: ["omarchy-audio-sink-availability"]
@@ -999,9 +976,13 @@ Panel {
 
               Column {
                 id: inputControls
-                anchors.fill: parent
+                anchors.left: parent.left
+                anchors.right: parent.right
+                anchors.top: parent.top
                 anchors.leftMargin: Style.space(6)
                 anchors.rightMargin: Style.space(6)
+                // Alone, the slider centres in the row the way the output slider does.
+                anchors.topMargin: root.inputLevelShown ? 0 : Style.spacing.controlGap / 2
                 spacing: Style.space(5)
 
                 PanelSlider {
@@ -1020,6 +1001,7 @@ Panel {
                 }
 
                 Rectangle {
+                  visible: root.inputLevelShown
                   width: parent.width
                   height: Math.max(Style.space(5), Style.spacing.xs)
                   color: Util.alpha(root.bar.foreground, 0.18)
@@ -1027,7 +1009,7 @@ Panel {
 
                   Rectangle {
                     height: parent.height
-                    width: parent.width * Math.max(0, Math.min(1, root.inputViaWpctl ? (root.inputMuted ? 0 : root.untypedInputPeak) : inputPeakMonitor.peak))
+                    width: parent.width * Math.max(0, Math.min(1, inputPeakMonitor.peak))
                     color: root.bar.foreground
                     Behavior on width { NumberAnimation { duration: Style.duration(70) } }
                   }

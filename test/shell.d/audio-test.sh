@@ -71,7 +71,7 @@ assert(!audio.isUntypedSource({ name: 'virtual_mic', isSink: false, isStream: fa
 
 const nodes = requireFromRoot('shell/Commons/AudioNodesModel.js')
 
-for (const name of ['quickshell', 'quickshell-peak-monitor', 'omarchy-audio-level'])
+for (const name of ['quickshell', 'quickshell-peak-monitor'])
   assert(nodes.isShellLevelMeter(name), 'audio knows the shell meter ' + name)
 for (const name of ['Firefox', 'quickshell-other', '', undefined])
   assert(!nodes.isShellLevelMeter(name), 'audio counts ' + name + ' as a recording')
@@ -117,7 +117,12 @@ assert(/path: "\/usr\/share\/omarchy-platform\/audio\.json"/.test(audioNodes) &&
 assert(/onLoadFailed: missing = true/.test(audioNodes), 'a removed hints file hides nothing')
 const sources = ['shell/plugins/panels/audio/Panel.qml', 'shell/plugins/panels/audio/Model.js', 'shell/Commons/AudioNodes.qml',
   'shell/Commons/AudioNodesModel.js', 'shell/Commons/UntypedInput.qml', 'shell/plugins/bar/widgets/Microphone.qml',
-  'bin/omarchy-audio-input-set-default', 'bin/omarchy-audio-source-level', 'bin/omarchy-audio-sink-availability']
+  'bin/omarchy-audio-input-set-default', 'bin/omarchy-audio-sink-availability']
 for (const file of sources)
   assert(!/apple|asahi|macbook|j[0-9]{3}|omarchy-hw-|platform-sound/i.test(read(file)), file + ' names no platform')
+
+const panel = read('shell/plugins/panels/audio/Panel.qml')
+assert(/inputPeakNode: inputViaWpctl \? null : source/.test(panel) && /inputLevelShown: !!inputPeakNode/.test(panel) &&
+  /visible: root\.inputLevelShown[^}]*inputPeakMonitor\.peak/.test(panel),
+  'the input level bar is hidden when the input is driven through wpctl')
 JS

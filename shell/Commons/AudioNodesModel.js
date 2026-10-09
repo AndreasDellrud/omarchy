@@ -1,13 +1,12 @@
 // Audio node rules the bar and the audio panel share. Plain functions, so the
 // tests load this file in Node.
 
-// The level meters the shell runs itself: Quickshell's peak monitor stream
-// (named after the shell or after its stream, depending on the PipeWire
-// version) and omarchy-audio-source-level's recording. None is an app using
-// the input.
+// The level meter the shell runs itself: Quickshell's peak monitor stream,
+// named after the shell or after its stream depending on the PipeWire version.
+// It is not an app using the input.
 function isShellLevelMeter(name) {
   var value = String(name || "")
-  return value === "quickshell" || value === "quickshell-peak-monitor" || value === "omarchy-audio-level"
+  return value === "quickshell" || value === "quickshell-peak-monitor"
 }
 
 function wholeNamePattern(pattern) {

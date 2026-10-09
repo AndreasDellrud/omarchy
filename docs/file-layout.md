@@ -186,7 +186,7 @@ The audio panel lists every output, input and playback stream PipeWire has, and 
 
 A pattern is a JavaScript regular expression matched against a whole `node.name`. A `hidden` node is never listed as an output, an input or an app stream, unless it is the current default output or input (so the panel always shows what's in use), and never lights the microphone widget; a `replaced` node is left out only while a node matching `by` exists (a mono processed microphone behind a stereo copy of it, say). Missing or malformed JSON means no hints, and an invalid pattern or entry is skipped. The shell reads the file at that fixed path, which no environment variable moves (`shell/Commons/AudioNodes.qml`), and `test/shell.d/audio-test.sh` covers the parsing.
 
-A virtual source (an `Audio/Source/Virtual`, such as EasyEffects' or a platform's microphone mapping) needs no hint: Quickshell leaves it untyped, so the panel and widget set its volume and mute through `wpctl` (`shell/Commons/UntypedInput.qml`, one `pactl subscribe` for the whole shell) and the panel meters it with `omarchy-audio-source-level`, and the panel lists it because PulseAudio does (`omarchy-audio-sink-availability sources`).
+A virtual source (an `Audio/Source/Virtual`, such as EasyEffects' or a platform's microphone mapping) needs no hint: Quickshell leaves it untyped, so the panel and widget set its volume and mute through `wpctl` (`shell/Commons/UntypedInput.qml`, one `pactl subscribe` for the whole shell), shows no level meter for it (Quickshell's peak monitor takes typed nodes only), and the panel lists it because PulseAudio does (`omarchy-audio-sink-availability sources`).
 
 ### Why `etc-overrides/` exists
 
