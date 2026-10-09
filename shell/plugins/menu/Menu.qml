@@ -852,6 +852,7 @@ Item {
     root.disarmPointer()
     root.evaluateGuards()
     opened = true
+    panel.primeFocus()
     rebuildDisplay()
     invalidateVolatileProvider(activeMenu)
     loadProviderForMenu(activeMenu)
@@ -879,6 +880,7 @@ Item {
     cursorActive = mode !== "input"
     root.disarmPointer()
     opened = true
+    panel.primeFocus()
     rebuildDisplay()
 
     Qt.callLater(function() { keyCatcher.forceActiveFocus() })
@@ -1076,11 +1078,14 @@ Item {
     // focus on map, as KeyboardPanel does, then settle on OnDemand.
     property bool focusPrimed: false
     shownKeyboardFocus: focusPrimed ? WlrKeyboardFocus.OnDemand : WlrKeyboardFocus.Exclusive
-    onBackingWindowVisibleChanged: {
+    // Re-prime on every open too: a summon while still mapped keeps OnDemand,
+    // which does not take focus back from wherever it went.
+    function primeFocus() {
       focusPrimed = false
       if (backingWindowVisible) focusPrimeTimer.restart()
       else focusPrimeTimer.stop()
     }
+    onBackingWindowVisibleChanged: primeFocus()
 
     Timer {
       id: focusPrimeTimer
