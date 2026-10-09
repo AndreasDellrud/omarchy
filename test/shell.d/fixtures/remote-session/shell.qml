@@ -3,7 +3,7 @@ import Quickshell
 
 // Drives the real remote-session service against a stub gliff-server on PATH:
 // idle at start, active with the ssh peer once a server runs, idle again after
-// it exits, with a notification announcing each transition. The service is
+// it exits. The service is
 // never refreshed by hand: a one-shot grim capture raises the same Hyprland
 // screencast event that gliff-server does, so the event path is what gets
 // exercised.

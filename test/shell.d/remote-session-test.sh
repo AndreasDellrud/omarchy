@@ -17,11 +17,6 @@ assertDeepEqual(model.stateFromOutput('4321 \n'), { active: true, sessions: 1, p
 assertDeepEqual(model.stateFromOutput('4321 10.0.0.5\n'), { active: true, sessions: 1, peers: ['10.0.0.5'] }, 'an ssh-spawned server reports the client address')
 assertDeepEqual(model.stateFromOutput('1 10.0.0.5\n2 10.0.0.5\n3 fd00::9\n'), { active: true, sessions: 3, peers: ['10.0.0.5', 'fd00::9'] }, 'peers are listed once each')
 
-assertEqual(model.activeTooltip([]), 'Remote session', 'tooltip without a peer stays generic')
-assertEqual(model.activeTooltip(['10.0.0.5']), 'Remote session from 10.0.0.5', 'tooltip names the peer')
-assert(model.startedBody(['10.0.0.5']).includes('from 10.0.0.5 through gliff'), 'start notification names the peer and gliff')
-assert(!model.startedBody([]).includes('from'), 'start notification without a peer omits the origin')
-
 const service = read('shell/plugins/services/remote-session/Service.qml')
 const manifest = JSON.parse(read('shell/plugins/services/remote-session/manifest.json'))
 assertEqual(manifest.id, 'omarchy.remote-session', 'service manifest id matches the indicator lookup')
@@ -29,9 +24,6 @@ assert(manifest.kinds.includes('service') && manifest.entryPoints.service === 'S
 assert(service.includes('target: Hyprland') && service.includes('isCaptureEvent(event ? event.name : "")'), 'service re-probes on Hyprland screencast events')
 assert(service.includes('pgrep -x -u "$(id -u)" gliff-server'), 'service probes for this user\'s gliff server processes')
 assert(service.includes('running: root.active'), 'service only polls while a session is active')
-assert(service.includes('root.stateLoaded && state.active !== wasActive'), 'service announces transitions only, not the initial probe')
-assert(service.includes('"Remote session started"') && service.includes('"Remote session ended"'), 'service announces both session start and end')
-assert(service.includes('Quickshell.execDetached(args)') && service.includes('"omarchy-notification-send"'), 'announcements go through the Omarchy notification helper')
 
 const indicator = read('shell/plugins/bar/indicators/RemoteSession.qml')
 const widget = read('shell/plugins/bar/widgets/Indicators.qml')
@@ -39,6 +31,8 @@ const widgetManifest = JSON.parse(read('shell/plugins/bar/widgets/Indicators.man
 assert(widget.match(/defaultIndicatorEntries: \[ "PasswordlessSudo", "ScreenRecording", "RemoteSession"/), 'remote session is included in the default indicator tray')
 assert(widgetManifest.barWidget.schema.find(field => field.key === 'items').options.some(option => option.value === 'RemoteSession'), 'remote session is configurable alongside the other indicators')
 assert(indicator.includes('firstPartyServiceFor("omarchy.remote-session")'), 'indicator reads the remote session service')
+assert(indicator.includes('"Remote session from " + peers.join(", ")'), 'active tooltip names the connected peers')
+assert(!service.includes('omarchy-notification-send'), 'a session is shown by the indicator alone, with no notification')
 assert(indicator.includes('useActiveColor: true') && indicator.includes('activeColor: Commons.Color.urgent'), 'active remote session uses the theme danger color')
 assertEqual(indicator.match(/activeText: "([^"]+)"/)[1], indicator.match(/inactiveText: "([^"]+)"/)[1], 'remote session keeps the same icon in both states')
 assert(!indicator.includes('visible:'), 'remote session uses the shared indicator visibility and hover behavior')

@@ -22,25 +22,9 @@ function stateFromOutput(text) {
   return { active: sessions > 0, sessions: sessions, peers: peers }
 }
 
-function peerSummary(peers) {
-  var list = Array.isArray(peers) ? peers : []
-  return list.length > 0 ? " from " + list.join(", ") : ""
-}
-
-function activeTooltip(peers) {
-  return "Remote session" + peerSummary(peers)
-}
-
-function startedBody(peers) {
-  return "Someone is viewing and controlling this screen" + peerSummary(peers) + " through gliff."
-}
-
 if (typeof module !== "undefined") {
   module.exports = {
     isCaptureEvent: isCaptureEvent,
-    stateFromOutput: stateFromOutput,
-    peerSummary: peerSummary,
-    activeTooltip: activeTooltip,
-    startedBody: startedBody
+    stateFromOutput: stateFromOutput
   }
 }

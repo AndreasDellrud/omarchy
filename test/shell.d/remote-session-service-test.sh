@@ -34,7 +34,6 @@ require_command grim
 TMPDIR=$(mktemp -d)
 result="$TMPDIR/result.json"
 log="$TMPDIR/quickshell.log"
-notifications="$TMPDIR/notifications.log"
 config_dir="$TMPDIR/remote-session"
 mkdir -p "$config_dir" "$TMPDIR/home" "$TMPDIR/bin"
 cp "$SHELL_TEST_DIR/fixtures/remote-session/shell.qml" "$config_dir/shell.qml"
@@ -47,17 +46,12 @@ cat >"$TMPDIR/bin/gliff-server" <<'SH'
 sleep 30
 SH
 
-cat >"$TMPDIR/bin/omarchy-notification-send" <<'SH'
-#!/bin/bash
-printf '%s\n' "$*" >>"$OMARCHY_TEST_NOTIFICATIONS"
-SH
-chmod +x "$TMPDIR/bin/gliff-server" "$TMPDIR/bin/omarchy-notification-send"
+chmod +x "$TMPDIR/bin/gliff-server"
 
 OMARCHY_PATH="$ROOT" \
 OMARCHY_QML_TEST_RESULT="$result" \
 OMARCHY_QML_TEST_STUB_PID="$TMPDIR/stub.pid" \
 OMARCHY_QML_TEST_FRAME="$TMPDIR/frame.png" \
-OMARCHY_TEST_NOTIFICATIONS="$notifications" \
 HOME="$TMPDIR/home" \
 XDG_CONFIG_HOME="$TMPDIR/home/.config" \
 XDG_CACHE_HOME="$TMPDIR/home/.cache" \
@@ -92,22 +86,3 @@ pass "remote session service tracks a gliff-server session"
 [[ -s $TMPDIR/frame.png ]] || fail "the fixture raised screencast events through grim"
 pass "the fixture raised screencast events through grim"
 
-sleep 0.3
-[[ -f $notifications ]] || fail "remote session service announces sessions"
-grep -q 'Remote session started Someone is viewing and controlling this screen from 10.0.0.5 through gliff.' "$notifications" || {
-  cat "$notifications" >&2
-  fail "session start is announced with the ssh peer"
-}
-pass "session start is announced with the ssh peer"
-
-grep -q 'Remote session ended' "$notifications" || {
-  cat "$notifications" >&2
-  fail "session end is announced"
-}
-pass "session end is announced"
-
-[[ $(wc -l <"$notifications") == 2 ]] || {
-  cat "$notifications" >&2
-  fail "the initial probe does not announce anything"
-}
-pass "the initial probe does not announce anything"

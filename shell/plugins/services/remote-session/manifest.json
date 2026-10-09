@@ -4,7 +4,7 @@
   "name": "Remote Session",
   "version": "1.0.0",
   "author": "Omarchy",
-  "description": "Detects a gliff remote-desktop session on this machine for the bar indicator, and announces it with a notification.",
+  "description": "Detects a gliff remote-desktop session on this machine for the bar indicator.",
   "kinds": [
     "service"
   ],

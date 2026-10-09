@@ -1,12 +1,11 @@
 import QtQuick
-import Quickshell
 import Quickshell.Hyprland
 import Quickshell.Io
 import "RemoteSessionModel.js" as RemoteSessionModel
 
 // Watches for gliff-server, the Hyprland remote desktop, so the machine being
 // controlled can see that someone is on it: the RemoteSession bar indicator
-// reads `active`, and a notification announces each session start and end.
+// reads `active` and `peers`.
 Item {
   id: root
 
@@ -31,25 +30,10 @@ Item {
 
   function applyProbe(text) {
     var state = RemoteSessionModel.stateFromOutput(text)
-    var wasActive = root.active
-    var announce = root.stateLoaded && state.active !== wasActive
-
     root.sessions = state.sessions
     root.peers = state.peers
     root.active = state.active
     root.stateLoaded = true
-
-    if (announce) root.announce(state)
-  }
-
-  function announce(state) {
-    var args = ["omarchy-notification-send", "-g", "󰢹"]
-    if (state.active) {
-      args.push("Remote session started", RemoteSessionModel.startedBody(state.peers))
-    } else {
-      args.push("Remote session ended", "The gliff connection to this screen closed.")
-    }
-    Quickshell.execDetached(args)
   }
 
   Component.onCompleted: refresh()
