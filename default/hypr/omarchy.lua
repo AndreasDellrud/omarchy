@@ -12,7 +12,7 @@ if _G.omarchy_default_bindings ~= false then
   require("default.hypr.bindings.jis")
   require("default.hypr.bindings.tiling")
   require("default.hypr.bindings.utilities")
-  require("default.hypr.bindings.voxtype")
+  require("default.hypr.bindings.dictation")
   require_optional.module("default.hypr.bindings.applications")
 end
 require("default.hypr.envs")
@@ -20,6 +20,7 @@ require("default.hypr.looknfeel")
 require("default.hypr.qconsole")
 require("default.hypr.input")
 require("default.hypr.windows")
+require("default.hypr.dictation-backend")
 
 -- Current theme overrides.
 require_optional.module("omarchy.current.theme.hyprland")
