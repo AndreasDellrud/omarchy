@@ -11,6 +11,8 @@ QtObject {
   property bool doNotDisturb: false
   property var activePlayer: null
   property var sourcePlayers: []
+  property bool active: false
+  property var peers: []
 
   property var _setIdleEnabled: null
   property var _setNightlight: null
